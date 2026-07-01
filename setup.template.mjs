@@ -65,14 +65,17 @@ async function ensureLocalIgnore(file, label, comment) {
 }
 
 function globalGitignorePath() {
-  // Honor a pre-existing custom core.excludesfile; otherwise pin the XDG default
-  // so git deterministically reads the file we append `.local/` to.
+  // Honor a pre-existing custom core.excludesfile; otherwise pin git's real
+  // default location (honoring XDG_CONFIG_HOME) so it deterministically reads
+  // the file we append `.local/` to.
   try {
     const p = execFileSync('git', ['config', '--global', '--get', 'core.excludesfile'],
       { encoding: 'utf8' }).trim();
-    if (p) return p.startsWith('~') ? path.join(os.homedir(), p.slice(1)) : p;
+    // Expand only a leading `~/`; leave `~user/…` literal (don't mis-join onto homedir).
+    if (p) return p.startsWith('~/') ? path.join(os.homedir(), p.slice(2)) : p;
   } catch {}
-  const def = path.join(os.homedir(), '.config', 'git', 'ignore');
+  const cfg = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
+  const def = path.join(cfg, 'git', 'ignore');
   try { execFileSync('git', ['config', '--global', 'core.excludesfile', def]); } catch {}
   return def;
 }

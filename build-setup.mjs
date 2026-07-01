@@ -24,6 +24,7 @@ const SKIP = new Set(['node_modules', '.cache', '.runtime', '.playwright',
 // embedded secret would leak into the tracked installer and its git history.
 const SKIP_FILE_BASENAME = [
   /^\.env$/, /^\.env\..+/, /\.local\.json$/, /\.secret$/, /^credentials/i, /^\.DS_Store$/,
+  /^\.npmrc$/, /^\.netrc$/, /^\.credentials$/, /\.pem$/, /\.key$/, /^id_(rsa|dsa|ecdsa|ed25519)/,
 ];
 const SKIP_FILE_RELPATH = [
   /^opencode\/(package\.json|package-lock\.json|bun\.lock)$/,
@@ -52,6 +53,8 @@ for (const f of files) {
 }
 
 const tpl = await fs.readFile(path.join(ROOT, 'setup.template.mjs'), 'utf8');
-const out = tpl.replace('/*__FILES__*/{}/*__END__*/', JSON.stringify(map, null, 2));
+// Function replacement so `$` sequences in the JSON (e.g. a filename with `$&`)
+// are NOT interpreted as String.replace special patterns.
+const out = tpl.replace('/*__FILES__*/{}/*__END__*/', () => JSON.stringify(map, null, 2));
 await fs.writeFile(path.join(ROOT, 'setup.mjs'), out);
 console.log(`Regenerated setup.mjs with ${files.length} embedded files.`);
