@@ -15,12 +15,27 @@ node setup.mjs --force   # overwrite existing .local/ files
 ```
 
 That single file:
-1. Writes `./.local/` (context, skills, prompts, memory, scripts, mcp, `AGENTS.md`).
-2. Adds `.local/` to the **machine-global gitignore** (`~/.config/git/ignore`) — hides it in every repo on the machine.
+1. Writes `./.local/` (context, wiki, skills, prompts, memory, scripts, mcp, opencode, `AGENTS.md`).
+2. Adds `.local/` to the **machine-global gitignore** (honoring a custom `core.excludesfile`) — hides it in every repo on the machine.
 3. Installs the **Claude Code user rule** (`~/.claude/CLAUDE.md`) so any project with `.local/AGENTS.md` is auto-discovered — zero repo footprint.
-4. Appends `.local/` to the project's own `.gitignore` (belt-and-suspenders).
+4. Appends a bare `.local/` to the project's own `.gitignore` (belt-and-suspenders, no AI-identifying comment).
+5. Applies **Ollama memory-safety caps** for the local model (macOS).
 
 Idempotent and safe to re-run.
+
+## Local AI workhorse (two-tier)
+
+- **Claude Code (cloud)** = intelligence — specs, docs, wiki, review, orchestration.
+- **Local model** = workhorse — `opencode` + Ollama **MLX** (`qwen3.5:9b-nvfp4`) doing the
+  token-heavy grunt work locally. All opencode data is contained inside `.local/`.
+
+```bash
+bash .local/scripts/start.sh          # one command: bring up + launch opencode
+bash .local/scripts/workhorse.sh "…"  # hand one task to the local model
+bash .local/scripts/kill-local-ai.sh  # emergency: free RAM
+```
+Full details in the wiki: `.local/context/wiki/` (INDEX, running, architecture,
+local-ai, cli-prompting).
 
 > **Why Node, not a bash script?** A single file that runs *natively* in both
 > PowerShell and Unix can't be plain bash (PowerShell can't execute it, and a

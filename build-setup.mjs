@@ -16,14 +16,30 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const LOCAL = path.join(ROOT, '.local');
-const SKIP = new Set(['node_modules', '.cache', '.playwright', 'test-results',
-  'playwright-report', 'storybook-static', '.maestro']);
+const SKIP = new Set(['node_modules', '.cache', '.runtime', '.playwright',
+  'test-results', 'playwright-report', 'storybook-static', '.maestro']);
+
+// NEVER embed these into the committed setup.mjs — secrets and per-machine
+// runtime files (mirrors .local/.gitignore). base64 is not encryption, so an
+// embedded secret would leak into the tracked installer and its git history.
+const SKIP_FILE_BASENAME = [
+  /^\.env$/, /^\.env\..+/, /\.local\.json$/, /\.secret$/, /^credentials/i, /^\.DS_Store$/,
+];
+const SKIP_FILE_RELPATH = [
+  /^opencode\/(package\.json|package-lock\.json|bun\.lock)$/,
+];
+
+function skipFile(abs) {
+  if (SKIP_FILE_BASENAME.some((re) => re.test(path.basename(abs)))) return true;
+  const rel = path.relative(LOCAL, abs).split(path.sep).join('/');
+  return SKIP_FILE_RELPATH.some((re) => re.test(rel));
+}
 
 async function walk(dir) {
   const out = [];
   for (const e of await fs.readdir(dir, { withFileTypes: true })) {
     if (e.isDirectory()) { if (!SKIP.has(e.name)) out.push(...await walk(path.join(dir, e.name))); }
-    else if (e.isFile()) out.push(path.join(dir, e.name));
+    else if (e.isFile() && !skipFile(path.join(dir, e.name))) out.push(path.join(dir, e.name));
   }
   return out;
 }
